@@ -13,5 +13,6 @@ vue --version
 ## Start instructions
 ```
 cd sim
+npm install
 npm run serve
 ```

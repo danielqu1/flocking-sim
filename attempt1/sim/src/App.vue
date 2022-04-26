@@ -1,15 +1,14 @@
 <template>
-  <img alt="Vue logo" src="./assets/logo.png">
-  <HelloWorld msg="Welcome to Your Vue.js App"/>
+  <FlockingSim title="Flocking Simulator"/>
 </template>
 
 <script>
-import HelloWorld from './components/HelloWorld.vue'
+import FlockingSim from './components/FlockingSim.vue'
 
 export default {
   name: 'App',
   components: {
-    HelloWorld
+    FlockingSim
   }
 }
 </script>
