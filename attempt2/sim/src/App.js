@@ -1,27 +1,15 @@
-import logo from './logo.svg';
 import './App.css';
-import { Button } from '@material-ui/core';
+import { Container } from '@material-ui/core';
+import FlockingGui from './components/FlockingGui.tsx';
 
 function App() {
   return (
-    <div className="App">
+    <Container maxWidth="lg" className="App">
       <header className="App-header">
         <h1>Flocking Simulator</h1>
-        <Button color="primary">Hello World</Button>
-        {/* <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a> */}
+        <FlockingGui/>
       </header>
-    </div>
+    </Container>
   );
 }
 
