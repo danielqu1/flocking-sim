@@ -2,7 +2,9 @@ import './FlockingGui.css';
 import { Button, Slider, Grid, Container } from '@mui/material';
 import PlayIcon from '@mui/icons-material/PlayArrow';
 import PauseIcon from '@mui/icons-material/Pause';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import React from 'react';
+
 import FlockingSim from './FlockingSim.tsx';
 
 import * as d3 from "d3";
@@ -41,6 +43,10 @@ class FlockingGui extends React.Component {
   xGrid = [];
   beta = 0;
   alpha = 0;
+  mx;
+  my;
+  mouseX;
+  mouseY;
   // color  = d3.scaleOrdinal(d3.schemeCategory20);
   
   key = function(d){ return d.id; };
@@ -69,17 +75,47 @@ class FlockingGui extends React.Component {
       // .attr("preserveAspectRatio", "xMinYMin meet")
       // .attr("viewBox", `0 0 ${width + margin.left + margin.right} ${height + margin.top + margin.bottom}`);
 
+
+    
+
+      svg.call(d3.drag()
+          .on('drag', this.dragged)
+          .on('start', this.dragStart)
+          .on('end', this.dragEnd))
+        .append('g');
+
     // var mx, my, mouseX, mouseY;
     this.viewInit()
     
   }
 
+  dragStart(event){
+    this.mx = event.x;
+    this.my = event.y;
+  }
+
+  dragged(event){
+    this.mouseX = this.mouseX || 0;
+    this.mouseY = this.mouseY || 0;
+    this.beta   = (event.x - this.mx + this.mouseX) * Math.PI / 230 ;
+    this.alpha  = (event.y - this.my + this.mouseY) * Math.PI / 230  * (-1);
+    var data = [
+      this.grid3d.rotateY(this.beta + startAngle).rotateX(this.alpha - startAngle)(this.xGrid),
+      this.point3d.rotateY(this.beta + startAngle).rotateX(this.alpha - startAngle)(this.scatter),
+    ];
+    this.updatePoints(data, 0);
+  }
+
+  dragEnd(event){
+      this.mouseX = event.x - this.mx + this.mouseX;
+      this.mouseY = event.y - this.my + this.mouseY;
+  }
+
   async updatePoints(data, tt) {
-    var svg = d3.select("#holder").select("svg");
-    console.log(svg)
+    var svg = d3.select("#holder").select("svg").select("g");
 
     function posPointX(d){
-      console.log(Number(d.projected.x.substring(1)))
+      // console.log(Number(d.projected.x.substring(1)))
       return Number(d.projected.x.substring(1));
     }
 
@@ -204,6 +240,16 @@ class FlockingGui extends React.Component {
     });
   };
 
+  handleReset = () => {
+    this.setState({
+      numBirds: 50,
+      separation: 50,
+      alignment: 50,
+      cohesion: 50,
+      flock: new FlockingSim(50)
+    })
+  }
+
   render() {
     return (
       <Container maxWidth="lg">
@@ -250,14 +296,31 @@ class FlockingGui extends React.Component {
           </Grid>
         </Grid>
 
-        <Button 
-          color={this.state.running ? "error" : "primary"}
-          variant="contained"
-          onClick={this.handlePPClick}
-          startIcon={this.state.running ? <PauseIcon/> : <PlayIcon/>}
-          className="play-pause">
-          {this.state.running ? "Pause" : "Play"}
-        </Button>
+
+        <Grid container columnSpacing={2} className="flock-buttons">
+          <Grid item xs={6}>
+            <Button 
+              color={this.state.running ? "error" : "primary"}
+              variant="contained"
+              onClick={this.handlePPClick}
+              startIcon={this.state.running ? <PauseIcon/> : <PlayIcon/>}>
+              {this.state.running ? "Pause" : "Play"}
+            </Button>
+          </Grid>
+          <Grid item xs={6}>
+            <Button
+              color="secondary"
+              variant="outlined"
+              onClick={this.handleReset}
+              startIcon={<RefreshIcon/>}>
+              Reset
+            </Button>
+          </Grid>
+
+        </Grid>
+        
+
+        
 
         <div id="holder"/>
       </Container>

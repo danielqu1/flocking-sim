@@ -3,11 +3,17 @@ p {
 }
 
 .params {
+    margin-left: 0px;
+    margin-right: 0px;
     margin-bottom: 40px;
     padding: 0px;
 }
 
-.play-pause {
+.flock-buttons {
+    padding-left: 35%;
+    padding-right: 35%;
     margin-top: 0px;
-    padding: 0px;
+    margin-bottom: 40px;
+    margin-left: 0px;
+    margin-right: 0px;
 }
