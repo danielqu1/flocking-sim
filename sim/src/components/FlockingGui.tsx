@@ -216,7 +216,7 @@ class FlockingGui extends React.Component {
           .attr("cx", d[0].x)
           .attr("cy", d[0].y)
           .attr("r", this.depthRadiusMap(d[0].z))
-          .style("fill", i === 0 ? "red" : "black");
+          .style("fill", "black");
 
         if (i === 0) {
           group.append("circle")
@@ -225,7 +225,7 @@ class FlockingGui extends React.Component {
             .attr("cx", d[0].x)
             .attr("cy", d[0].y)
             .attr("r", this.state.visualRange)
-            .style("fill", i === 0 ? "red" : "black")
+            .style("fill", "black")
             .style("opacity", .1);
         }
 
@@ -236,7 +236,7 @@ class FlockingGui extends React.Component {
           .attr("x2", d[0].add(d[1].normalize().scaleUp(2 * this.depthRadiusMap(d[0].z))).x)
           .attr("y2", d[0].add(d[1].normalize().scaleUp(2 * this.depthRadiusMap(d[0].z))).y)
           .style("stroke-width", 2)
-          .style("stroke", i === 0 ? "red" : "black")
+          .style("stroke", "black")
       });
   }
 

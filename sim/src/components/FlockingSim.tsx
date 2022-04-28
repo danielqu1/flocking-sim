@@ -257,8 +257,8 @@ class FlockingSim {
 
             let newDir = avgPos.updateSubtract(bird.pos).updateScaleUp(cohesion)
             newDir.updateAdd(sepDir.updateScaleUp(separation));
-            newDir.updateAdd(avgDir.updateScaleUp(alignment));
-            newDir.updateAdd(bird.dir.scaleUp(momentum));
+            newDir.updateAdd(avgDir.updateScaleUp(alignment / 3));
+            newDir.updateAdd(bird.dir.scaleUp(momentum * 5));
 
             if (useLight && light.distance(bird.pos) < visualRange * 4) {
                 newDir.updateAdd(light.subtract(bird.pos).updateScaleUp(lightAttraction));
