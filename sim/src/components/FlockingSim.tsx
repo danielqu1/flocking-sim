@@ -78,7 +78,7 @@ class vec3 {
         let thisNorm = this.norm();
 
         // return this if norm is 0
-        if (thisNorm == 0) {
+        if (thisNorm === 0) {
             return this.copy();
         }
 
@@ -93,7 +93,7 @@ class vec3 {
         let thisNorm = this.norm();
 
         // do nothing if norm is 0
-        if (thisNorm == 0) {
+        if (thisNorm === 0) {
             return this;
         }
 
@@ -116,7 +116,8 @@ function randPos(max) {
     return Math.floor(Math.random() * max);
 }
 
-const timestep = 10;
+// const timestep = 10;
+const timestep = .03;
 
 class Bird {
     pos: vec3;
@@ -133,6 +134,10 @@ class Bird {
     constructor(pos: vec3, dir: vec3) {
         this.updatePos(pos);
         this.updateDir(dir);
+    }
+
+    distance(other: Bird) {
+        return this.pos.distance(other.pos);
     }
 }
 
@@ -166,102 +171,110 @@ class FlockingSim {
         return ret;
     }
 
+
+
+    speed(dir: vec3){
+        let limit = 200;
+        let spd = Math.sqrt(dir.x ** 2 + dir.y ** 2 + dir.z ** 2);
+        if (spd > limit){
+            dir.x = dir.x / spd * limit;
+            dir.y = dir.y / spd * limit;
+            dir.z = dir.z / spd * limit;
+        }
+    }
+
+    inBounds(pos: vec3, dir: vec3){
+        let margin = 100;
+
+        function diffToUpdate(diff: number) {
+            if (diff > margin) {
+                return 9999;
+            }
+            return ((margin * -5) / (diff - margin)) - 5
+        }
+        
+        if (pos.x < 0){
+            let diff = -pos.x;
+            dir.x += diffToUpdate(diff);
+        }
+        if (pos.y < 0){
+            let diff = -pos.y;
+            dir.y += diffToUpdate(diff);
+        }
+        if (pos.z < 0){
+            let diff = -pos.z;
+            dir.z += diffToUpdate(diff);
+        }
+        if (pos.x > this.width){
+            let diff = pos.x - this.width;
+            dir.x -= diffToUpdate(diff);
+        }
+        if (pos.y > this.height){
+            let diff = pos.y - this.height;
+            dir.y -= diffToUpdate(diff);
+        }
+        if (pos.z > this.depth){
+            let diff = pos.z - this.depth;
+            dir.z -= diffToUpdate(diff);
+        }
+    }
+
+
     // these params range from 0-100
     // result: update positions and directions of birds
     // returns: array of positions and directions
     // eg. [[pos1: vec3, dir1: vec3], [pos2: vec3, dir2: vec3]... ]
     getNextStep(separation: number, alignment: number, cohesion: number, momentum: number, lightAttraction: number, visualRange: number, light: vec3, useLight: boolean) {
         let ret = [];
-
-        let weightedSeparation = (separation / 180) + .3;
-        let weightedAlignment = alignment / 100;
-        let weightedCohesion = cohesion / 100;
-        let weightedMomentum = momentum / 70;
-        let weightedLightAttraction = lightAttraction / 400;
-
         let newBirds = [];
-        for (let b of this.birds) {
+
+        for (let bird of this.birds) {
+
+
             let avgPos = new vec3(0, 0, 0);
-            let avgDir = new vec3(0, 0, 0);
             let sepDir = new vec3(0, 0, 0);
+            let avgDir = new vec3(0, 0, 0);
+
             let numInRange = 0;
+            for (let b of this.birds){
+                if (b.pos.distance(bird.pos) < 2 * separation ** 2) {  //arbitrary value
+                    sepDir.updateAdd(bird.pos.subtract(b.pos))
+                }
 
-            for (let other of this.birds) {
-                // skip if other is b
-                if (other === b) {
+                if (bird.distance(b) > visualRange) {
                     continue;
                 }
 
-                // check if other in visual range
-                if (b.pos.distance(other.pos) > visualRange) {
-                    continue;
-                }
-
-                avgPos.updateAdd(other.pos);
-                avgDir.updateAdd(other.dir);
-                sepDir.updateAdd(other.pos.subtract(b.pos));
-
+                avgPos.updateAdd(b.pos);
+                avgDir.updateAdd(b.dir);
                 numInRange += 1;
             }
 
-            let newDir = b.dir.copy();
-
             if (numInRange !== 0) {
-                avgPos.updateScaleDown(numInRange);
+                avgPos.updateScaleDown(numInRange)
                 avgDir.updateScaleDown(numInRange);
-
-                sepDir.updateNegate().updateNormalize();
-                let alignDir = avgDir.normalize();
-                let cohesionDir = avgPos.subtract(b.pos).normalize();
-
-                sepDir.updateScaleUp(weightedSeparation);
-                alignDir.updateScaleUp(weightedAlignment);
-                cohesionDir.updateScaleUp(weightedCohesion);
-                let momentumDir = b.dir.scaleUp(weightedMomentum);
-
-                newDir = sepDir.add(alignDir).add(cohesionDir).add(momentumDir);
             }
 
-            // attract to light if in range
-            if (useLight) {
-                let lightDir = light.subtract(b.pos).normalize();
-                lightDir.updateScaleUp(weightedLightAttraction);
-                newDir.updateAdd(lightDir);
+            let newDir = avgPos.updateSubtract(bird.pos).updateScaleUp(cohesion)
+            newDir.updateAdd(sepDir.updateScaleUp(separation));
+            newDir.updateAdd(avgDir.updateScaleUp(alignment));
+            newDir.updateAdd(bird.dir.scaleUp(momentum));
+
+            if (useLight && light.distance(bird.pos) < visualRange * 4) {
+                newDir.updateAdd(light.subtract(bird.pos).updateScaleUp(lightAttraction));
             }
 
-            let newPos = b.pos.add(newDir.scaleUp(timestep));
+            this.inBounds(bird.pos, newDir);
+            this.speed(newDir)
 
-            // make sure newPos is in boundaries
-            if (newPos.x < 0) {
-                newPos.x = 0;
-                newDir.x = -newDir.x;
-            }
-            if (newPos.x > this.width) {
-                newPos.x = this.width;
-                newDir.x = -newDir.x;
-            }
-            if (newPos.y < 0) {
-                newPos.y = 0;
-                newDir.y = -newDir.y;
-            }
-            if (newPos.y > this.height) {
-                newPos.y = this.height;
-                newDir.y = -newDir.y;
-            }
-            if (newPos.z < 0) {
-                newPos.z = 0;
-                newDir.z = -newDir.z;
-            }
-            if (newPos.z > this.depth) {
-                newPos.z = this.depth;
-                newDir.z = -newDir.z;
-            }
-
-            newBirds.push(new Bird(newPos, newDir))
+            let newPos = bird.pos.add(newDir.scaleUp(timestep));
+        
+            newBirds.push(new Bird(newPos, newDir));
             ret.push([newPos, newDir]);
         }
 
         this.birds = newBirds;
+
         return ret;
     }
 }

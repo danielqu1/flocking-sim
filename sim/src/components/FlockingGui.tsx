@@ -9,22 +9,29 @@ import { vec3, FlockingSim } from './FlockingSim.tsx';
 import * as d3 from "d3";
 import { _3d } from 'd3-3d';
 
-const aspectRatio = 1.0 / 2.0;
-const width = 1050;
+const aspectRatio = 1.0 / 2.5;
+const width = 1000;
 const height = width * aspectRatio;
-const margin = 20;
+const margin = 70;
 const depth = 600;
 const radRange = [5, 10]
 
+// const timestep = 1;
 const timestep = 1;
 
 const defaultNumBirds = 100;
-const defaultSeparation = 50;
-const defaultAlignment = 50;
-const defaultCohesion = 50;
-const defaultMomentum = 50;
-const defaultLightAttraction = 50;
-const defaultVisualRange = width / 6;
+// const defaultSeparation = 50;
+// const defaultAlignment = 50;
+// const defaultCohesion = 50;
+// const defaultMomentum = 50;
+// const defaultLightAttraction = 50;
+// const defaultVisualRange = width / 6;
+const defaultSeparation = 5;
+const defaultAlignment = 5;
+const defaultCohesion = 5;
+const defaultMomentum = 5;
+const defaultLightAttraction = 5;
+const defaultVisualRange = width / 12;
 
 class FlockingGui extends React.Component {
   state = {
@@ -355,7 +362,7 @@ class FlockingGui extends React.Component {
             <Slider 
               size="small"
               min={5}
-              max={200}
+              max={150}
               value={this.state.numBirds}
               onChange={this.handleNumBirdsChange}>
             </Slider>
@@ -363,6 +370,8 @@ class FlockingGui extends React.Component {
           <Grid item xs={3}>
             <Slider 
               size="small"
+              min={0}
+              max={10}
               value={this.state.separation}
               onChange={this.handleSeparationChange}>
             </Slider>
@@ -370,6 +379,8 @@ class FlockingGui extends React.Component {
           <Grid item xs={3}>
             <Slider 
               size="small"
+              min={0}
+              max={10}
               value={this.state.alignment}
               onChange={this.handleAlignmentChange}>
             </Slider>
@@ -377,6 +388,8 @@ class FlockingGui extends React.Component {
           <Grid item xs={3}>
             <Slider 
               size="small"
+              min={0}
+              max={10}
               value={this.state.cohesion}
               onChange={this.handleCohesionChange}>
             </Slider>
@@ -385,7 +398,7 @@ class FlockingGui extends React.Component {
             <Slider 
               size="small"
               min={0}
-              max={100}
+              max={10}
               value={this.state.momentum}
               onChange={this.handleMomentumChange}>
             </Slider>
@@ -394,7 +407,7 @@ class FlockingGui extends React.Component {
             <Slider 
               size="small"
               min={0}
-              max={100}
+              max={10}
               value={this.state.lightAttraction}
               onChange={this.handleLightAttractionChange}>
             </Slider>
