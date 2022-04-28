@@ -112,7 +112,6 @@ class vec3 {
     }
 }
 
-
 function randPos(max) {
     return Math.floor(Math.random() * max);
 }
@@ -152,7 +151,7 @@ class FlockingSim {
 
         for (let i = 0; i < numBirds; i++) {
             let pos = new vec3(randPos(width), randPos(height), randPos(depth));
-            let dir = new vec3(1, 0, 0);
+            let dir = new vec3(randPos(100), randPos(100), randPos(100));
             dir.updateNormalize();
 
             this.birds.push(new Bird(pos, dir))
@@ -171,13 +170,14 @@ class FlockingSim {
     // result: update positions and directions of birds
     // returns: array of positions and directions
     // eg. [[pos1: vec3, dir1: vec3], [pos2: vec3, dir2: vec3]... ]
-    getNextStep(separation: number, alignment: number, cohesion: number, momentum: number, visualRange: number) {
+    getNextStep(separation: number, alignment: number, cohesion: number, momentum: number, lightAttraction: number, visualRange: number, light: vec3, useLight: boolean) {
         let ret = [];
 
         let weightedSeparation = (separation / 180) + .3;
         let weightedAlignment = alignment / 100;
         let weightedCohesion = cohesion / 100;
         let weightedMomentum = momentum / 70;
+        let weightedLightAttraction = lightAttraction / 400;
 
         let newBirds = [];
         for (let b of this.birds) {
@@ -222,6 +222,13 @@ class FlockingSim {
                 newDir = sepDir.add(alignDir).add(cohesionDir).add(momentumDir);
             }
 
+            // attract to light if in range
+            if (useLight) {
+                let lightDir = light.subtract(b.pos).normalize();
+                lightDir.updateScaleUp(weightedLightAttraction);
+                newDir.updateAdd(lightDir);
+            }
+
             let newPos = b.pos.add(newDir.scaleUp(timestep));
 
             // make sure newPos is in boundaries
@@ -259,4 +266,7 @@ class FlockingSim {
     }
 }
 
-export default FlockingSim
+export {
+    vec3,
+    FlockingSim
+}

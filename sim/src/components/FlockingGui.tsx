@@ -4,8 +4,7 @@ import PlayIcon from '@mui/icons-material/PlayArrow';
 import PauseIcon from '@mui/icons-material/Pause';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import React from 'react';
-import FlockingSim from './FlockingSim.tsx';
-import { vec3 } from './FlockingSim.tsx';
+import { vec3, FlockingSim } from './FlockingSim.tsx';
 
 import * as d3 from "d3";
 import { _3d } from 'd3-3d';
@@ -24,6 +23,7 @@ const defaultSeparation = 50;
 const defaultAlignment = 50;
 const defaultCohesion = 50;
 const defaultMomentum = 50;
+const defaultLightAttraction = 50;
 const defaultVisualRange = width / 6;
 
 class FlockingGui extends React.Component {
@@ -36,9 +36,13 @@ class FlockingGui extends React.Component {
     alignment: defaultAlignment,
     cohesion: defaultCohesion,
     momentum: defaultMomentum,
+    lightAttraction: defaultLightAttraction,
     visualRange: defaultVisualRange,
     flock: new FlockingSim(50, width, height, depth)
   }
+
+  lightLoc = [0, 0];
+  useLight = false;
 
   depthRadiusMap = d3.scaleLinear()
     .domain([0, depth])
@@ -50,7 +54,23 @@ class FlockingGui extends React.Component {
       .attr("id", "svg-sim")
       .attr("width", width + (2 * margin))
       .attr("height", height + (2 * margin));
-    
+
+    var radialGradient = svg.append("defs")
+      .append("radialGradient")
+      .attr("id", "lightGradient")
+    radialGradient.append("stop")
+      .attr("offset", "0%")
+      .attr("stop-color", "white")
+      .attr("stop-opacity", 1)
+    radialGradient.append("stop")
+      .attr("offset", "20%")
+      .attr("stop-color", "gold")
+      .attr("stop-opacity", .8)
+    radialGradient.append("stop")
+      .attr("offset", "100%")
+      .attr("stop-color", "gold")
+      .attr("stop-opacity", 0)
+
     svg.append("rect")
       .attr("id", "screen")
       .attr("x", 0)
@@ -59,8 +79,42 @@ class FlockingGui extends React.Component {
       .attr("height", height + 2 * margin)
       .style("fill", "lightblue")
 
+    svg.append("circle")
+      .attr("id", "mouseLight")
+      .attr("cx", width / 2)
+      .attr("cy", height / 2)
+      .attr("r", 0)
+      .style("fill", "url('#lightGradient')")
+
     svg.append("g")
       .attr("transform", `translate(${margin}, ${margin})`)
+      
+    svg.append("rect")
+      .attr("x", margin)
+      .attr("y", margin)
+      .attr("width", width)
+      .attr("height", height)
+      .style("opacity", 0)
+      .on("mousemove", (event) => {
+        let ptr = d3.pointer(event)
+        d3.select("#mouseLight")
+          .transition()
+          .ease(d3.easeLinear)
+          .duration(80)
+          .attr("cx", ptr[0])
+          .attr("cy", ptr[1])
+        this.lightLoc = [ptr[0] - margin, ptr[1] - margin]
+      })
+      .on("mouseenter", () => {
+        d3.select("#mouseLight")
+          .attr("r", 50)
+        this.useLight = true;
+      })
+      .on("mouseleave", () => {
+        d3.select("#mouseLight")
+          .attr("r", 0)
+        this.useLight = false;
+      })
 
     this.setupPoints();
   }
@@ -72,7 +126,10 @@ class FlockingGui extends React.Component {
       this.state.alignment,
       this.state.cohesion,
       this.state.momentum,
+      this.state.lightAttraction,
       this.state.visualRange,
+      new vec3(this.lightLoc[0], this.lightLoc[1], depth / 2),
+      this.useLight
     );
 
     var svg = d3.select("#holder")
@@ -230,6 +287,12 @@ class FlockingGui extends React.Component {
     });
   };
 
+  handleLightAttractionChange = (event: Event, newValue: number | number[]) => {
+    this.setState({
+      lightAttraction: newValue
+    });
+  };
+
   handleVisualRangeChange = (event: Event, newValue: number | number[]) => {
     this.setState({
       visualRange: newValue
@@ -266,7 +329,7 @@ class FlockingGui extends React.Component {
   render() {
     return (
       <Container maxWidth="lg">
-        <Grid container columnSpacing={4} className="params" columns={18}>
+        <Grid container columnSpacing={4} className="params" columns={21}>
           <Grid item xs={3}>
             <p>Number of Birds</p>
           </Grid> 
@@ -282,6 +345,9 @@ class FlockingGui extends React.Component {
           <Grid item xs={3}>
             <p>Momentum</p>
           </Grid> 
+          <Grid item xs={3}>
+            <p>Light Attraction</p>
+          </Grid>
           <Grid item xs={3}>
             <p>Visual Range</p>
           </Grid> 
@@ -322,6 +388,15 @@ class FlockingGui extends React.Component {
               max={100}
               value={this.state.momentum}
               onChange={this.handleMomentumChange}>
+            </Slider>
+          </Grid>
+          <Grid item xs={3}>
+            <Slider 
+              size="small"
+              min={0}
+              max={100}
+              value={this.state.lightAttraction}
+              onChange={this.handleLightAttractionChange}>
             </Slider>
           </Grid>
           <Grid item xs={3}>
