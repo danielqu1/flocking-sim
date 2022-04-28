@@ -184,13 +184,13 @@ class FlockingSim {
     }
 
     inBounds(pos: vec3, dir: vec3){
-        let margin = 100;
+        let margin = 70;
 
         function diffToUpdate(diff: number) {
             if (diff > margin) {
                 return 9999;
             }
-            return ((margin * -5) / (diff - margin)) - 5
+            return ((margin * -1000) / (diff - margin)) - 1000
         }
         
         if (pos.x < 0){

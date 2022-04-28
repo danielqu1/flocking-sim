@@ -154,16 +154,38 @@ class FlockingGui extends React.Component {
         group.select("#range")
           .data([d]);
         
-        group.select("line")
+        group.select("#leftDir")
+          .data([d]);
+        group.select("#rightDir")
+          .data([d]);
+        group.select("#centerDir")
           .data([d]);
       });
 
-    svg.selectAll("line")
+    svg.selectAll("#centerDir")
       .transition()
       .duration(timestep)
       .ease(d3.easeLinear)
       .attr("x1", (d: vec3[]) => d[0].x)
       .attr("y1", (d: vec3[]) => d[0].y)
+      .attr("x2", (d: vec3[]) => d[0].add(d[1].normalize().scaleUp(2 * this.depthRadiusMap(d[0].z))).x)
+      .attr("y2", (d: vec3[]) => d[0].add(d[1].normalize().scaleUp(2 * this.depthRadiusMap(d[0].z))).y)
+
+    svg.selectAll("#leftDir")
+      .transition()
+      .duration(timestep)
+      .ease(d3.easeLinear)
+      .attr("x1", (d: vec3[]) => d[0].x + d[1].normalize().scaleUp(this.depthRadiusMap(d[0].z) - .2).y)
+      .attr("y1", (d: vec3[]) => d[0].y - d[1].normalize().scaleUp(this.depthRadiusMap(d[0].z) - .2).x)
+      .attr("x2", (d: vec3[]) => d[0].add(d[1].normalize().scaleUp(2 * this.depthRadiusMap(d[0].z))).x)
+      .attr("y2", (d: vec3[]) => d[0].add(d[1].normalize().scaleUp(2 * this.depthRadiusMap(d[0].z))).y)
+
+    svg.selectAll("#rightDir")
+      .transition()
+      .duration(timestep)
+      .ease(d3.easeLinear)
+      .attr("x1", (d: vec3[]) => d[0].x - d[1].normalize().scaleUp(this.depthRadiusMap(d[0].z) - .2).y)
+      .attr("y1", (d: vec3[]) => d[0].y + d[1].normalize().scaleUp(this.depthRadiusMap(d[0].z) - .2).x)
       .attr("x2", (d: vec3[]) => d[0].add(d[1].normalize().scaleUp(2 * this.depthRadiusMap(d[0].z))).x)
       .attr("y2", (d: vec3[]) => d[0].add(d[1].normalize().scaleUp(2 * this.depthRadiusMap(d[0].z))).y)
 
@@ -229,7 +251,29 @@ class FlockingGui extends React.Component {
             .style("opacity", .1);
         }
 
+        
         group.append("line")
+          .attr("id", "leftDir")
+          .data([d])
+          .attr("x1", d[0].x + d[1].normalize().scaleUp(this.depthRadiusMap(d[0].z) - .2).y)
+          .attr("y1", d[0].y - d[1].normalize().scaleUp(this.depthRadiusMap(d[0].z) - .2).x)
+          .attr("x2", d[0].add(d[1].normalize().scaleUp(2 * this.depthRadiusMap(d[0].z))).x)
+          .attr("y2", d[0].add(d[1].normalize().scaleUp(2 * this.depthRadiusMap(d[0].z))).y)
+          .style("stroke-width", 2)
+          .style("stroke", "black")
+
+        group.append("line")
+          .attr("id", "rightDir")
+          .data([d])
+          .attr("x1", d[0].x - d[1].normalize().scaleUp(this.depthRadiusMap(d[0].z) - .2).y)
+          .attr("y1", d[0].y + d[1].normalize().scaleUp(this.depthRadiusMap(d[0].z) - .2).x)
+          .attr("x2", d[0].add(d[1].normalize().scaleUp(2 * this.depthRadiusMap(d[0].z))).x)
+          .attr("y2", d[0].add(d[1].normalize().scaleUp(2 * this.depthRadiusMap(d[0].z))).y)
+          .style("stroke-width", 2)
+          .style("stroke", "black")
+
+        group.append("line")
+          .attr("id", "centerDir")
           .data([d])
           .attr("x1", d[0].x)
           .attr("y1", d[0].y)
