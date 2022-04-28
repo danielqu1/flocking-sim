@@ -15,23 +15,34 @@ const width = 1050;
 const height = width * aspectRatio;
 const margin = 20;
 const depth = 600;
+const radRange = [5, 10]
 
-const timestep = 400;
+const timestep = 1;
+
+const defaultNumBirds = 100;
+const defaultSeparation = 50;
+const defaultAlignment = 50;
+const defaultCohesion = 50;
+const defaultMomentum = 50;
+const defaultVisualRange = width / 6;
 
 class FlockingGui extends React.Component {
   state = {
+    resetPoints: false,
     createView: false,
     running: false,
-    numBirds: 50,
-    separation: 50,
-    alignment: 50,
-    cohesion: 50,
+    numBirds: defaultNumBirds,
+    separation: defaultSeparation,
+    alignment: defaultAlignment,
+    cohesion: defaultCohesion,
+    momentum: defaultMomentum,
+    visualRange: defaultVisualRange,
     flock: new FlockingSim(50, width, height, depth)
   }
 
   depthRadiusMap = d3.scaleLinear()
     .domain([0, depth])
-    .range([1, 10])
+    .range(radRange.reverse())
 
   makeView() {
     var svg = d3.select("#holder")
@@ -56,7 +67,13 @@ class FlockingGui extends React.Component {
 
   async updatePoints() {
     // get data
-    var data = this.state.flock.getNextStep();
+    var data = this.state.flock.getNextStep(
+      this.state.separation,
+      this.state.alignment,
+      this.state.cohesion,
+      this.state.momentum,
+      this.state.visualRange,
+    );
 
     var svg = d3.select("#holder")
       .select("svg")
@@ -67,11 +84,33 @@ class FlockingGui extends React.Component {
       .each((d: number[], i: number) => {
         var group = svg.select(`#bird_${i}`)
         
-        group.select("circle")
+        group.select("#pt")
+          .data([d]);
+
+        group.select("#range")
+          .data([d]);
+        
+        group.select("line")
           .data([d]);
       });
 
-    await svg.selectAll("circle")
+    svg.selectAll("line")
+      .transition()
+      .duration(timestep)
+      .ease(d3.easeLinear)
+      .attr("x1", (d: vec3[]) => d[0].x)
+      .attr("y1", (d: vec3[]) => d[0].y)
+      .attr("x2", (d: vec3[]) => d[0].add(d[1].normalize().scaleUp(2 * this.depthRadiusMap(d[0].z))).x)
+      .attr("y2", (d: vec3[]) => d[0].add(d[1].normalize().scaleUp(2 * this.depthRadiusMap(d[0].z))).y)
+
+    svg.selectAll("#range")
+      .transition()
+      .duration(timestep)
+      .ease(d3.easeLinear)
+      .attr("cx", (d: vec3[]) => d[0].x)
+      .attr("cy", (d: vec3[]) => d[0].y)
+
+    await svg.selectAll("#pt")
       .transition()
       .duration(timestep)
       .ease(d3.easeLinear)
@@ -80,6 +119,8 @@ class FlockingGui extends React.Component {
       .attr("r", (d: vec3[]) => this.depthRadiusMap(d[0].z))
       .end();
     
+    // await new Promise(resolve => setTimeout(resolve, 1000));
+
     if (this.state.running) {
       this.updatePoints();
     }
@@ -87,7 +128,7 @@ class FlockingGui extends React.Component {
   
   setupPoints() {
     // get data
-    var data = this.state.flock.getNextStep();
+    var data = this.state.flock.getCur();
 
     var svg = d3.select("#holder")
       .select("svg")
@@ -106,11 +147,32 @@ class FlockingGui extends React.Component {
         var group = svg.select(`#bird_${i}`)
         
         group.append("circle")
+          .attr("id", "pt")
           .data([d])
           .attr("cx", d[0].x)
           .attr("cy", d[0].y)
           .attr("r", this.depthRadiusMap(d[0].z))
-          .style("fill", "black");
+          .style("fill", i === 0 ? "red" : "black");
+
+        if (i === 0) {
+          group.append("circle")
+            .attr("id", "range")
+            .data([d])
+            .attr("cx", d[0].x)
+            .attr("cy", d[0].y)
+            .attr("r", this.state.visualRange)
+            .style("fill", i === 0 ? "red" : "black")
+            .style("opacity", .1);
+        }
+
+        group.append("line")
+          .data([d])
+          .attr("x1", d[0].x)
+          .attr("y1", d[0].y)
+          .attr("x2", d[0].add(d[1].normalize().scaleUp(2 * this.depthRadiusMap(d[0].z))).x)
+          .attr("y2", d[0].add(d[1].normalize().scaleUp(2 * this.depthRadiusMap(d[0].z))).y)
+          .style("stroke-width", 2)
+          .style("stroke", i === 0 ? "red" : "black")
       });
   }
 
@@ -125,8 +187,10 @@ class FlockingGui extends React.Component {
       this.makeView();
     }
 
-    if (this.state.numBirds !== prevState.numBirds) {
+    if (this.state.numBirds !== prevState.numBirds || 
+      this.state.resetPoints && !prevState.resetPoints) {
       this.setupPoints()
+      this.setState({resetPoints: false});
     } else {
       if (this.state.running && !prevState.running) {
         this.updatePoints();
@@ -160,6 +224,25 @@ class FlockingGui extends React.Component {
     });
   };
 
+  handleMomentumChange = (event: Event, newValue: number | number[]) => {
+    this.setState({
+      momentum: newValue
+    });
+  };
+
+  handleVisualRangeChange = (event: Event, newValue: number | number[]) => {
+    this.setState({
+      visualRange: newValue
+    });
+
+    var svg = d3.select("#holder")
+      .select("svg")
+      .select("g");
+
+    svg.selectAll("#range")
+      .attr("r", this.state.visualRange)
+  };
+
   handlePPClick = () => {
     this.setState({
       running: !this.state.running
@@ -169,10 +252,13 @@ class FlockingGui extends React.Component {
   handleRefresh = () => {
     this.setState({
       running: false,
-      numBirds: 50,
-      separation: 50,
-      alignment: 50,
-      cohesion: 50,
+      resetPoints: true,
+      numBirds: defaultNumBirds,
+      separation: defaultSeparation,
+      alignment: defaultAlignment,
+      cohesion: defaultCohesion,
+      momentum: defaultMomentum,
+      visualRange: defaultVisualRange,
       flock: new FlockingSim(50, width, height, depth)
     });
   };
@@ -180,7 +266,7 @@ class FlockingGui extends React.Component {
   render() {
     return (
       <Container maxWidth="lg">
-        <Grid container columnSpacing={8} className="params">
+        <Grid container columnSpacing={4} className="params" columns={18}>
           <Grid item xs={3}>
             <p>Number of Birds</p>
           </Grid> 
@@ -194,9 +280,16 @@ class FlockingGui extends React.Component {
             <p>Cohesion</p>
           </Grid> 
           <Grid item xs={3}>
+            <p>Momentum</p>
+          </Grid> 
+          <Grid item xs={3}>
+            <p>Visual Range</p>
+          </Grid> 
+          <Grid item xs={3}>
             <Slider 
               size="small"
               min={5}
+              max={200}
               value={this.state.numBirds}
               onChange={this.handleNumBirdsChange}>
             </Slider>
@@ -209,17 +302,35 @@ class FlockingGui extends React.Component {
             </Slider>
           </Grid> 
           <Grid item xs={3}>
-          <Slider 
+            <Slider 
               size="small"
               value={this.state.alignment}
               onChange={this.handleAlignmentChange}>
             </Slider>
           </Grid> 
           <Grid item xs={3}>
-          <Slider 
+            <Slider 
               size="small"
               value={this.state.cohesion}
               onChange={this.handleCohesionChange}>
+            </Slider>
+          </Grid>
+          <Grid item xs={3}>
+            <Slider 
+              size="small"
+              min={0}
+              max={100}
+              value={this.state.momentum}
+              onChange={this.handleMomentumChange}>
+            </Slider>
+          </Grid>
+          <Grid item xs={3}>
+            <Slider 
+              size="small"
+              min={0}
+              max={width / 3}
+              value={this.state.visualRange}
+              onChange={this.handleVisualRangeChange}>
             </Slider>
           </Grid>
         </Grid>
