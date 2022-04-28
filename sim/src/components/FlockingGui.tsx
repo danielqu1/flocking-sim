@@ -14,18 +14,18 @@ const aspectRatio = 1.0 / 2.0;
 const width = 1050;
 const height = width * aspectRatio;
 const margin = 20;
-const depth = 600;
+const depth = 300;
 
-const timestep = 400;
+const timestep = 50;
 
 class FlockingGui extends React.Component {
   state = {
     createView: false,
     running: false,
     numBirds: 50,
-    separation: 50,
-    alignment: 50,
-    cohesion: 50,
+    separation: 10,
+    alignment: 1,
+    cohesion: 3,
     flock: new FlockingSim(50, width, height, depth)
   }
 
@@ -170,9 +170,9 @@ class FlockingGui extends React.Component {
     this.setState({
       running: false,
       numBirds: 50,
-      separation: 50,
-      alignment: 50,
-      cohesion: 50,
+      separation: 10,
+      alignment: 1,
+      cohesion: 3,
       flock: new FlockingSim(50, width, height, depth)
     });
   };
