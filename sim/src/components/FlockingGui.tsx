@@ -1,5 +1,5 @@
 import './FlockingGui.css';
-import { Button, Slider, Grid, Container } from '@mui/material';
+import { Button, Slider, Grid, Container, Select, MenuItem} from '@mui/material';
 import PlayIcon from '@mui/icons-material/PlayArrow';
 import PauseIcon from '@mui/icons-material/Pause';
 import RefreshIcon from '@mui/icons-material/Refresh';
@@ -32,6 +32,8 @@ const defaultCohesion = 5;
 const defaultMomentum = 5;
 const defaultLightAttraction = 5;
 const defaultVisualRange = width / 12;
+const defaultNumPredators = 0;
+const defaultNumObstacles = 0;
 
 class FlockingGui extends React.Component {
   state = {
@@ -45,6 +47,8 @@ class FlockingGui extends React.Component {
     momentum: defaultMomentum,
     lightAttraction: defaultLightAttraction,
     visualRange: defaultVisualRange,
+    numPredators: defaultNumPredators,
+    numObstacles: defaultNumObstacles,
     flock: new FlockingSim(50, width, height, depth)
   }
 
@@ -357,6 +361,18 @@ class FlockingGui extends React.Component {
       .attr("r", this.state.visualRange)
   };
 
+  handlePredatorChange = (event) => {
+    this.setState({
+      numPredators: event.target.value
+    });
+  }
+
+  handleObstacleChange = (event) => {
+    this.setState({
+      numObstacles: event.target.value
+    });
+  }
+
   handlePPClick = () => {
     this.setState({
       running: !this.state.running
@@ -383,7 +399,7 @@ class FlockingGui extends React.Component {
         <Grid container columnSpacing={4} className="params" columns={21}>
           <Grid item xs={3}>
             <p>Number of Birds</p>
-          </Grid> 
+          </Grid>
           <Grid item xs={3}>
             <p>Separation</p>
           </Grid> 
@@ -466,6 +482,41 @@ class FlockingGui extends React.Component {
             </Slider>
           </Grid>
         </Grid>
+
+        <Container maxWidth="lg">
+          <Grid container columnSpacing={4} className="params" columns={8}>
+            <Grid item xs={4}>
+                <p>Number of Predators</p>
+            </Grid>
+            <Grid item xs={4}>
+                <p>Number of Obstacles</p>
+            </Grid>
+            <Grid item xs={4}>
+                <Select
+                  value={this.state.numObstacles}
+                  onChange={this.handleObstacleChange}
+                >
+                  <MenuItem value={0}>0</MenuItem>
+                  <MenuItem value={1}>1</MenuItem>
+                  <MenuItem value={2}>2</MenuItem>
+                  <MenuItem value={3}>3</MenuItem>
+                  <MenuItem value={4}>4</MenuItem>
+                </Select>
+            </Grid>
+            <Grid item xs={4}>
+                <Select
+                  value={this.state.numPredators}
+                  onChange={this.handlePredatorChange}
+                >
+                  <MenuItem value={0}>0</MenuItem>
+                  <MenuItem value={1}>1</MenuItem>
+                  <MenuItem value={2}>2</MenuItem>
+                  <MenuItem value={3}>3</MenuItem>
+                  <MenuItem value={4}>4</MenuItem>
+                </Select>
+            </Grid>
+          </Grid>           
+        </Container>
 
         <Grid container columnSpacing={2} columns={14} className="buttons">
           <Grid item xs={5}/>
