@@ -122,7 +122,8 @@ const timestep = .03;
 class Bird {
     pos: vec3;
     dir: vec3;
-    predator: boolean
+    predator: boolean;
+    dead: boolean;
 
     updatePos(pos: vec3) {
         this.pos = pos;
@@ -136,10 +137,11 @@ class Bird {
         this.predator = predator;
     }
 
-    constructor(pos: vec3, dir: vec3, predator: boolean) {
+    constructor(pos: vec3, dir: vec3, predator: boolean, dead: boolean) {
         this.updatePos(pos);
         this.updateDir(dir);
         this.updatePredator(predator);
+        this.dead = dead;
     }
 
     distance(other: Bird) {
@@ -153,9 +155,12 @@ class FlockingSim {
     width: number;
     height: number;
     depth: number;
+    
+    static readonly SPEEDLIMIT = 200;
+    static readonly BIRDFATNESS = 20;
 
-    constructor(numBirds: number, width: number, height: number, depth: number) {
-        this.numBirds = numBirds;
+    constructor(numBirds: number, numPredators: number, width: number, height: number, depth: number) {
+        this.numBirds = numBirds + numPredators;
         this.width = width;
         this.height = height;
         this.depth = depth;
@@ -165,22 +170,29 @@ class FlockingSim {
             let dir = new vec3(randPos(100), randPos(100), randPos(100));
             dir.updateNormalize();
 
-            this.birds.push(new Bird(pos, dir, false))
+            this.birds.push(new Bird(pos, dir, false, false))
+        }
+
+        for (let i = 0; i < numPredators; i++) {
+            let pos = new vec3(randPos(width), randPos(height), randPos(depth));
+            let dir = new vec3(randPos(100), randPos(100), randPos(100));
+            dir.updateNormalize();
+
+            this.birds.push(new Bird(pos, dir, true, false));
         }
     }
 
     getCur() {
         let ret = [];
         for (let b of this.birds) {
-            ret.push([b.pos, b.dir]);
+            ret.push([b.pos, b.dir, b.predator, b.dead]);
         }
         return ret;
     }
 
 
 
-    speed(dir: vec3){
-        let limit = 200;
+    speed(dir: vec3, limit: number = FlockingSim.SPEEDLIMIT) {
         let spd = Math.sqrt(dir.x ** 2 + dir.y ** 2 + dir.z ** 2);
         if (spd > limit){
             dir.x = dir.x / spd * limit;
@@ -231,77 +243,135 @@ class FlockingSim {
     // returns: array of positions and directions
     // eg. [[pos1: vec3, dir1: vec3], [pos2: vec3, dir2: vec3]... ]
     getNextStep(separation: number, alignment: number, cohesion: number, momentum: number, 
-                lightAttraction: number, visualRange: number, predators: number, 
+                lightAttraction: number, fear: number, visualRange: number, predVisualRange: number, predSpeed: number,
                 light: vec3, useLight: boolean) {
         let ret = [];
         let newBirds = [];
 
+        // first mark the dead birds
         for (let bird of this.birds) {
+            if (!bird.predator) {
+                continue;
+            }
 
+            for (let b of this.birds) {
+                if (b === bird || b.predator) {
+                    continue;
+                }
 
-            let avgPos = new vec3(0, 0, 0);
-            let sepDir = new vec3(0, 0, 0);
-            let avoidDir = new vec3(0, 0, 0);
-            let avgDir = new vec3(0, 0, 0);
-
-            let numInRange = 0;
-            for (let b of this.birds){
-                let dist = b.pos.distance(bird.pos);
-                if (dist <= visualRange) {
-                    if (b.predator && !bird.predator) {
-                        avoidDir.updateAdd(bird.pos.subtract(b.pos));
-                    }
-                    else if (b.predator && bird.predator) {
-                        continue;
-                    }
-                    else {
-                        if (dist < 2 * separation ** 2) {           // Arbitary num
-                            sepDir.updateAdd(bird.pos.subtract(b.pos))
-                        }
-                        avgPos.updateAdd(b.pos);
-                        avgDir.updateAdd(b.dir);
-                        numInRange += 1;
-                    }
+                if (b.distance(bird) < FlockingSim.BIRDFATNESS) {
+                    b.dead = true;
                 }
             }
+        }
 
-            if (numInRange !== 0) {
-                avgPos.updateScaleDown(numInRange)
-                avgDir.updateScaleDown(numInRange);
+        for (let bird of this.birds) {
+            if (bird.dead) {
+                newBirds.push(bird);
+                ret.push([bird.pos, bird.dir, bird.predator, bird.dead]);
+                continue;
             }
 
-            let newDir = new vec3(0, 0, 0);
-
+            
             if (bird.predator) {
-                newDir = avgPos.updateSubtract(bird.pos).updateScaleUp(10);
-            }
-            else {
-                newDir = avgPos.updateSubtract(bird.pos).updateScaleUp(cohesion);
+                // if this is a predator, go to nearest bird in visual range
+                let closestBird;
+                let sepDir = new vec3(0, 0, 0);
+                let closestDist = 99999999;
+                let found = false;
+                for (let b of this.birds) {
+                    if (b === bird) {
+                        continue;
+                    }
+
+                    if (b.dead) {
+                        continue;
+                    }
+
+                    let dist = b.distance(bird);
+
+                    
+
+                    if (dist <= predVisualRange) {
+                        // add separation from other predators
+                        if (b.predator) {
+                            if (dist < 2 * separation ** 2) {           // Arbitary num
+                                sepDir.updateAdd(bird.pos.subtract(b.pos))
+                            }
+                            continue;
+                        }
+                        
+                        if (dist < closestDist) {
+                            found = true;
+                            closestDist = dist;
+                            closestBird = b.pos;
+                        }
+                    }
+                }
+
+                let newDir = bird.dir.scaleUp(momentum);
+                newDir.updateAdd(sepDir.updateScaleUp(separation * 2));
+                if (found) {
+                    newDir.updateAdd(closestBird.subtract(bird.pos).updateNormalize().updateScaleUp(predSpeed * 2));
+                }
+
+                this.inBounds(bird.pos, newDir);
+                this.speed(newDir, predSpeed)
+
+                let newPos = bird.pos.add(newDir.scaleUp(timestep));
+            
+                newBirds.push(new Bird(newPos, newDir, true, false));
+                ret.push([newPos, newDir, true, false]);
+            } else {
+                let avgPos = new vec3(0, 0, 0);
+                let sepDir = new vec3(0, 0, 0);
+                let avoidDir = new vec3(0, 0, 0);
+                let avgDir = new vec3(0, 0, 0);
+
+                let numInRange = 0;
+                for (let b of this.birds){
+                    let dist = b.pos.distance(bird.pos);
+                    if (dist <= visualRange) {
+                        if (b.predator) {
+                            // this is bird, other is predator
+                            avoidDir.updateAdd(bird.pos.subtract(b.pos).updateNormalize().scaleUp(visualRange / dist));
+                        } else {
+                            // both are birds
+                            if (dist < 2 * separation ** 2) {           // Arbitary num
+                                sepDir.updateAdd(bird.pos.subtract(b.pos))
+                            }
+                            avgPos.updateAdd(b.pos);
+                            avgDir.updateAdd(b.dir);
+                            numInRange += 1;
+                        }
+                    }
+                }
+
+                if (numInRange !== 0) {
+                    avgPos.updateScaleDown(numInRange)
+                    avgDir.updateScaleDown(numInRange);
+                }
+
+                let newDir = avgPos.updateSubtract(bird.pos).updateScaleUp(cohesion);
                 newDir.updateAdd(sepDir.updateScaleUp(separation));
-                newDir.updateAdd(avoidDir.updateScaleUp(10));
+                newDir.updateAdd(avoidDir.updateScaleUp(fear * 20));
                 newDir.updateAdd(avgDir.updateScaleUp(alignment / 3));
-                newDir.updateAdd(bird.dir.scaleUp(momentum * 5));              
-            }
+                newDir.updateAdd(bird.dir.scaleUp(momentum * 5));
+                
+                if (useLight && light.distance(bird.pos) < visualRange * 4) {
+                    newDir.updateAdd(light.subtract(bird.pos).updateScaleUp(lightAttraction));
+                }
 
-            if (useLight && light.distance(bird.pos) < visualRange * 4) {
-                newDir.updateAdd(light.subtract(bird.pos).updateScaleUp(lightAttraction));
-            }
+                this.inBounds(bird.pos, newDir);
+                this.speed(newDir)
 
-            this.inBounds(bird.pos, newDir);
-            this.speed(newDir)
-
-            let newPos = bird.pos.add(newDir.scaleUp(timestep));
-        
-            newBirds.push(new Bird(newPos, newDir, false));
-            ret.push([newPos, newDir]);
-        }
-
-        if (predators > 0) {
-            for (let i = 0; i < predators; i++)
-            {
-                newBirds[i].updatePredator(true);
+                let newPos = bird.pos.add(newDir.scaleUp(timestep));
+            
+                newBirds.push(new Bird(newPos, newDir, false, bird.dead));
+                ret.push([newPos, newDir, false, bird.dead]);
             }
         }
+
         this.birds = newBirds;
 
         return ret;
