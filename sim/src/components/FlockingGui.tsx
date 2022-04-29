@@ -139,6 +139,7 @@ class FlockingGui extends React.Component {
       this.state.momentum,
       this.state.lightAttraction,
       this.state.visualRange,
+      this.state.numPredators,
       new vec3(this.lightLoc[0], this.lightLoc[1], depth / 2),
       this.useLight
     );
@@ -493,8 +494,8 @@ class FlockingGui extends React.Component {
             </Grid>
             <Grid item xs={4}>
                 <Select
-                  value={this.state.numObstacles}
-                  onChange={this.handleObstacleChange}
+                  value={this.state.numPredators}
+                  onChange={this.handlePredatorChange}
                 >
                   <MenuItem value={0}>0</MenuItem>
                   <MenuItem value={1}>1</MenuItem>
@@ -505,8 +506,8 @@ class FlockingGui extends React.Component {
             </Grid>
             <Grid item xs={4}>
                 <Select
-                  value={this.state.numPredators}
-                  onChange={this.handlePredatorChange}
+                  value={this.state.numObstacles}
+                  onChange={this.handleObstacleChange}
                 >
                   <MenuItem value={0}>0</MenuItem>
                   <MenuItem value={1}>1</MenuItem>

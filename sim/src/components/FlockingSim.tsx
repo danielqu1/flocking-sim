@@ -231,7 +231,8 @@ class FlockingSim {
     // returns: array of positions and directions
     // eg. [[pos1: vec3, dir1: vec3], [pos2: vec3, dir2: vec3]... ]
     getNextStep(separation: number, alignment: number, cohesion: number, momentum: number, 
-                lightAttraction: number, visualRange: number, light: vec3, useLight: boolean) {
+                lightAttraction: number, visualRange: number, predators: number, 
+                light: vec3, useLight: boolean) {
         let ret = [];
         let newBirds = [];
 
@@ -240,22 +241,28 @@ class FlockingSim {
 
             let avgPos = new vec3(0, 0, 0);
             let sepDir = new vec3(0, 0, 0);
+            let avoidDir = new vec3(0, 0, 0);
             let avgDir = new vec3(0, 0, 0);
 
             let numInRange = 0;
             for (let b of this.birds){
-
-                if (b.pos.distance(bird.pos) <= visualRange) {  //arbitrary value
-                    sepDir.updateAdd(bird.pos.subtract(b.pos))
-                    avgPos.updateAdd(b.pos);
-                    avgDir.updateAdd(b.dir);
-                    numInRange += 1;
+                let dist = b.pos.distance(bird.pos);
+                if (dist <= visualRange) {
+                    if (b.predator && !bird.predator) {
+                        avoidDir.updateAdd(bird.pos.subtract(b.pos));
+                    }
+                    else if (b.predator && bird.predator) {
+                        continue;
+                    }
+                    else {
+                        if (dist < 2 * separation ** 2) {           // Arbitary num
+                            sepDir.updateAdd(bird.pos.subtract(b.pos))
+                        }
+                        avgPos.updateAdd(b.pos);
+                        avgDir.updateAdd(b.dir);
+                        numInRange += 1;
+                    }
                 }
-
-                else {
-                    continue;
-                }
-                
             }
 
             if (numInRange !== 0) {
@@ -263,12 +270,18 @@ class FlockingSim {
                 avgDir.updateScaleDown(numInRange);
             }
 
-            sepDir.updateNormalize();
-            avgDir.updateNormalize();
-            let newDir = avgPos.updateSubtract(bird.pos).updateScaleUp(cohesion)
-            newDir.updateAdd(sepDir.updateScaleUp(separation));
-            newDir.updateAdd(avgDir.updateScaleUp(alignment / 3));
-            newDir.updateAdd(bird.dir.scaleUp(momentum * 5));
+            let newDir = new vec3(0, 0, 0);
+
+            if (bird.predator) {
+                newDir = avgPos.updateSubtract(bird.pos).updateScaleUp(10);
+            }
+            else {
+                newDir = avgPos.updateSubtract(bird.pos).updateScaleUp(cohesion);
+                newDir.updateAdd(sepDir.updateScaleUp(separation));
+                newDir.updateAdd(avoidDir.updateScaleUp(10));
+                newDir.updateAdd(avgDir.updateScaleUp(alignment / 3));
+                newDir.updateAdd(bird.dir.scaleUp(momentum * 5));              
+            }
 
             if (useLight && light.distance(bird.pos) < visualRange * 4) {
                 newDir.updateAdd(light.subtract(bird.pos).updateScaleUp(lightAttraction));
@@ -283,6 +296,12 @@ class FlockingSim {
             ret.push([newPos, newDir]);
         }
 
+        if (predators > 0) {
+            for (let i = 0; i < predators; i++)
+            {
+                newBirds[i].updatePredator(true);
+            }
+        }
         this.birds = newBirds;
 
         return ret;
