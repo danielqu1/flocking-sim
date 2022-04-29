@@ -122,6 +122,7 @@ const timestep = .03;
 class Bird {
     pos: vec3;
     dir: vec3;
+    predator: boolean
 
     updatePos(pos: vec3) {
         this.pos = pos;
@@ -131,9 +132,14 @@ class Bird {
         this.dir = dir;
     }
 
-    constructor(pos: vec3, dir: vec3) {
+    updatePredator(predator: boolean){
+        this.predator = predator;
+    }
+
+    constructor(pos: vec3, dir: vec3, predator: boolean) {
         this.updatePos(pos);
         this.updateDir(dir);
+        this.updatePredator(predator);
     }
 
     distance(other: Bird) {
@@ -159,7 +165,7 @@ class FlockingSim {
             let dir = new vec3(randPos(100), randPos(100), randPos(100));
             dir.updateNormalize();
 
-            this.birds.push(new Bird(pos, dir))
+            this.birds.push(new Bird(pos, dir, false))
         }
     }
 
@@ -224,7 +230,8 @@ class FlockingSim {
     // result: update positions and directions of birds
     // returns: array of positions and directions
     // eg. [[pos1: vec3, dir1: vec3], [pos2: vec3, dir2: vec3]... ]
-    getNextStep(separation: number, alignment: number, cohesion: number, momentum: number, lightAttraction: number, visualRange: number, light: vec3, useLight: boolean) {
+    getNextStep(separation: number, alignment: number, cohesion: number, momentum: number, 
+                lightAttraction: number, visualRange: number, light: vec3, useLight: boolean) {
         let ret = [];
         let newBirds = [];
 
@@ -237,17 +244,18 @@ class FlockingSim {
 
             let numInRange = 0;
             for (let b of this.birds){
-                if (b.pos.distance(bird.pos) < 2 * separation ** 2) {  //arbitrary value
+
+                if (b.pos.distance(bird.pos) <= visualRange) {  //arbitrary value
                     sepDir.updateAdd(bird.pos.subtract(b.pos))
+                    avgPos.updateAdd(b.pos);
+                    avgDir.updateAdd(b.dir);
+                    numInRange += 1;
                 }
 
-                if (bird.distance(b) > visualRange) {
+                else {
                     continue;
                 }
-
-                avgPos.updateAdd(b.pos);
-                avgDir.updateAdd(b.dir);
-                numInRange += 1;
+                
             }
 
             if (numInRange !== 0) {
@@ -255,6 +263,8 @@ class FlockingSim {
                 avgDir.updateScaleDown(numInRange);
             }
 
+            sepDir.updateNormalize();
+            avgDir.updateNormalize();
             let newDir = avgPos.updateSubtract(bird.pos).updateScaleUp(cohesion)
             newDir.updateAdd(sepDir.updateScaleUp(separation));
             newDir.updateAdd(avgDir.updateScaleUp(alignment / 3));
@@ -269,7 +279,7 @@ class FlockingSim {
 
             let newPos = bird.pos.add(newDir.scaleUp(timestep));
         
-            newBirds.push(new Bird(newPos, newDir));
+            newBirds.push(new Bird(newPos, newDir, false));
             ret.push([newPos, newDir]);
         }
 
